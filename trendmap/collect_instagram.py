@@ -44,7 +44,7 @@ def _graph_format(media_type, product_type):
 
 def fetch_graph(handles, cfg):
     uid, token = os.environ["IG_USER_ID"], os.environ["IG_ACCESS_TOKEN"]
-    ver = cfg["graph_api_version"]
+    ver = os.environ.get("META_GRAPH_VERSION", "v23.0")
     limit = cfg["posts_per_creator"]
     cutoff = now() - timedelta(days=cfg["lookback_days"])
     items, meta = [], {}

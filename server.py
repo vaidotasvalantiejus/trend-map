@@ -244,6 +244,52 @@ def scheduler():
         time.sleep(60)
 
 
+# ---------- Meta / Instagram prijungimas ----------
+
+def meta_connect(data):
+    import requests
+    ver = os.environ.get("META_GRAPH_VERSION", "v23.0")
+    app_id, secret, token = (data.get(k, "").strip() for k in ("app_id", "app_secret", "token"))
+    if not (app_id and secret and token):
+        raise ValueError("Užpildyk visus tris laukus.")
+    g = f"https://graph.facebook.com/{ver}"
+
+    def call(url, params):
+        r = requests.get(url, params=params, timeout=30).json()
+        if "error" in r:
+            raise ValueError("Meta atsakė: " + r["error"].get("message", "nežinoma klaida"))
+        return r
+
+    long_lived = call(f"{g}/oauth/access_token", {
+        "grant_type": "fb_exchange_token", "client_id": app_id, "client_secret": secret,
+        "fb_exchange_token": token})["access_token"]
+    pages = call(f"{g}/me/accounts", {"fields": "name,access_token,instagram_business_account{id,username}",
+                                      "access_token": long_lived, "limit": 50}).get("data", [])
+    page = next((p for p in pages if p.get("instagram_business_account")), None)
+    if not page:
+        raise ValueError("Neradau Facebook puslapio su prijungta Instagram paskyra. Patikrink, ar Instagram "
+                         "paskyra yra Creator/Business ir susieta su Facebook puslapiu, o generuodamas raktą "
+                         "pažymėjai tą puslapį.")
+    ig = page["instagram_business_account"]
+    # patikrinimas su vienu stebimu kūrėju
+    test = creators()[0] if creators() else ig.get("username")
+    check = requests.get(f"{g}/{ig['id']}", params={
+        "fields": f"business_discovery.username({test}){{username,media_count}}",
+        "access_token": page["access_token"]}, timeout=30).json()
+    s = jload(SECRETS, {})
+    s.update({"IG_USER_ID": ig["id"], "IG_ACCESS_TOKEN": page["access_token"],
+              "IG_ACCOUNT": ig.get("username", "")})
+    s.pop("APIFY_TOKEN", None)
+    jsave(SECRETS, s, private=True)
+    log(f"Instagram prijungtas per @{ig.get('username')} (puslapis {page.get('name')})")
+    if "error" in check:
+        note = f" Bandomasis @{test} patikrinimas nepavyko: {check['error'].get('message')}"
+    else:
+        note = f" Patikrinta: @{test} matomas."
+    run_chain(["instagram", "report"], "prijungtas Instagram")
+    return {"ok": True, "message": f"Prijungta per @{ig.get('username')}.{note} Surinkimas jau paleistas."}
+
+
 # ---------- prisijungimas ----------
 
 def hash_pw(pw, salt=None):
@@ -358,6 +404,13 @@ def settings_page():
         return (f'<label for="{k}">{title} {st}</label>'
                 f'<input id="{k}" name="{k}" type="password" autocomplete="off" placeholder="{html.escape(hint)}">')
 
+    if s.get("IG_ACCESS_TOKEN") and s.get("IG_USER_ID"):
+        ig_status = (f'<p><span class="keyset">● prijungta</span> per @{html.escape(s.get("IG_ACCOUNT", "?"))}. '
+                     'Kitų kūrėjų įrašai renkami per šią paskyrą.</p>')
+    elif s.get("APIFY_TOKEN"):
+        ig_status = '<p><span class="keyset">● naudojamas Apify</span></p>'
+    else:
+        ig_status = '<p><span class="keymiss">● neprijungta</span></p>'
     jobs = ""
     for name in ("portals", "instagram", "report", "ideas"):
         last = state.get(f"{name}_last") if name != "ideas" else state.get("ideas")
@@ -381,9 +434,18 @@ def settings_page():
 <form id="keys">
 {keyline("ANTHROPIC_API_KEY", "Claude API raktas", "sk-ant-…  (console.anthropic.com → API Keys)")}
 {keyline("APIFY_TOKEN", "Apify raktas (Instagram)", "apify_api_…  (apify.com → Settings → API & Integrations)")}
-{keyline("IG_USER_ID", "Instagram Graph API vartotojo ID (nebūtina)", "naudojama tik be Apify")}
-{keyline("IG_ACCESS_TOKEN", "Instagram Graph API raktas (nebūtina)", "naudojama tik be Apify")}
 <div class="row"><button class="btn">Išsaugoti raktus</button></div></form></div>
+
+<div class="card"><h2>Instagram (nemokamai, per Meta)</h2>
+{ig_status}
+<p>Reikia Instagram Creator ar Business paskyros, susietos su Facebook puslapiu, ir Meta programėlės.
+Įklijuok tris reikšmes iš Meta. Serveris pats gaus nesibaigiantį raktą ir rastų tavo Instagram paskyrą.
+Programėlės slaptasis raktas naudojamas tik vieną kartą ir neišsaugomas.</p>
+<form id="meta">
+<label for="app_id">App ID</label><input id="app_id" name="app_id" autocomplete="off" placeholder="App settings → Basic → App ID">
+<label for="app_secret">App Secret</label><input id="app_secret" name="app_secret" type="password" autocomplete="off" placeholder="App settings → Basic → App secret → Show">
+<label for="token">Laikinas raktas iš Graph API Explorer</label><input id="token" name="token" type="password" autocomplete="off" placeholder="EAA…">
+<div class="row"><button class="btn">Prijungti Instagram</button></div></form></div>
 
 <div class="card"><h2>Tavo pozicionavimas</h2><p>Claude pagal tai vertina, kurios temos tinka tau, ir rašo idėjas. Pakeitus, tinkamumas perskaičiuojamas.</p>
 <form id="profile"><textarea name="text" spellcheck="false">{html.escape(profile)}</textarea>
@@ -401,6 +463,9 @@ const msg = (t, bad) => {{ const m = document.getElementById("msg"); m.innerHTML
 async function post(url, body){{ const r = await fetch(url, {{method:"POST", headers:H, body:JSON.stringify(body)}}); const j = await r.json().catch(() => ({{}})); if (!r.ok) throw new Error(j.error || r.status); return j; }}
 document.getElementById("keys").onsubmit = async e => {{ e.preventDefault(); const d = Object.fromEntries(new FormData(e.target));
   try {{ await post("/api/keys", d); msg("Raktai išsaugoti."); setTimeout(() => location.reload(), 900); }} catch(x) {{ msg("Klaida: " + x.message, 1); }} }};
+document.getElementById("meta").onsubmit = async e => {{ e.preventDefault(); const d = Object.fromEntries(new FormData(e.target));
+  msg("Jungiama…");
+  try {{ const r = await post("/api/meta-connect", d); msg(r.message); e.target.reset(); setTimeout(() => location.reload(), 2500); }} catch(x) {{ msg("Nepavyko: " + x.message, 1); }} }};
 document.getElementById("profile").onsubmit = async e => {{ e.preventDefault();
   try {{ await post("/api/profile", {{text: e.target.text.value}}); msg("Pozicionavimas išsaugotas. Tinkamumas bus perskaičiuotas per kitą analizę."); }} catch(x) {{ msg("Klaida: " + x.message, 1); }} }};
 document.getElementById("pw").onsubmit = async e => {{ e.preventDefault();
@@ -579,6 +644,8 @@ class Handler(BaseHTTPRequestHandler):
             if "ANTHROPIC_API_KEY" in changed or "APIFY_TOKEN" in changed:
                 run_chain(["instagram", "report"], "nauji raktai")
             return self.json({"ok": True})
+        if path == "/api/meta-connect":
+            return self.json(meta_connect(data))
         if path == "/api/profile":
             text = data.get("text", "")
             if not text.strip():

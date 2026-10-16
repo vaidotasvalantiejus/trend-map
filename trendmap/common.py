@@ -34,7 +34,6 @@ DEFAULT_SETTINGS = {
         "posts_per_creator": 30,
         "lookback_days": 35,
         "apify_actor": "apify~instagram-scraper",
-        "graph_api_version": "v21.0",
     },
     "ideas": {"count": 8, "hooks_language": "lt"},
 }
