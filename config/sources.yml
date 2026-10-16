@@ -1,0 +1,56 @@
+# Marketingo portalai ir kiti tekstiniai šaltiniai (RSS).
+# Svetainės skiltis „Šaltiniai“ rodo, kurie veikia. Neveikiantį ištrink arba pakeisk adresą.
+
+feeds:
+  # Tarptautiniai marketingo portalai
+  - name: Adweek
+    url: https://www.adweek.com/feed/
+  - name: Marketing Brew
+    url: https://www.marketingbrew.com/feed.xml
+  - name: Digiday
+    url: https://digiday.com/feed/
+  - name: Marketing Dive
+    url: https://www.marketingdive.com/feeds/news/
+  - name: Social Media Today
+    url: https://www.socialmediatoday.com/feeds/news/
+  - name: Campaign
+    url: https://www.campaignlive.com/rss/news
+  - name: Fast Company Co.Design
+    url: https://www.fastcompany.com/co-design/rss
+  - name: Ad Age
+    url: https://adage.com/arc/outboundfeeds/rss/
+  - name: HubSpot Marketing
+    url: https://blog.hubspot.com/marketing/rss.xml
+  # Portalai be veikiančio RSS — per Google News
+  - name: Marketing Week (per Google News)
+    url: https://news.google.com/rss/search?q=site:marketingweek.com+when:7d&hl=en-GB&gl=GB&ceid=GB:en
+  - name: The Drum (per Google News)
+    url: https://news.google.com/rss/search?q=site:thedrum.com+when:7d&hl=en-GB&gl=GB&ceid=GB:en
+  - name: Creative Review (per Google News)
+    url: https://news.google.com/rss/search?q=site:creativereview.co.uk+when:14d&hl=en-GB&gl=GB&ceid=GB:en
+
+  # Bendruomenės
+  - name: Reddit r/marketing
+    url: https://www.reddit.com/r/marketing/top/.rss?t=week
+  - name: Reddit r/advertising
+    url: https://www.reddit.com/r/advertising/top/.rss?t=week
+  - name: Reddit r/branding
+    url: https://www.reddit.com/r/branding/top/.rss?t=week
+
+  # Google News paieškos (EN)
+  - name: Google News — brand strategy
+    url: https://news.google.com/rss/search?q=%22brand+strategy%22+when:7d&hl=en-US&gl=US&ceid=US:en
+  - name: Google News — marketing trends
+    url: https://news.google.com/rss/search?q=%22marketing+trends%22+when:7d&hl=en-US&gl=US&ceid=US:en
+  - name: Google News — creator economy
+    url: https://news.google.com/rss/search?q=%22creator+economy%22+when:7d&hl=en-US&gl=US&ceid=US:en
+  - name: Google News — rebrand
+    url: https://news.google.com/rss/search?q=rebrand+when:7d&hl=en-US&gl=US&ceid=US:en
+
+  # Google News paieškos (LT)
+  - name: Google News — rinkodara
+    url: https://news.google.com/rss/search?q=rinkodara+when:7d&hl=lt&gl=LT&ceid=LT:lt
+  - name: Google News — reklama
+    url: https://news.google.com/rss/search?q=reklama+when:7d&hl=lt&gl=LT&ceid=LT:lt
+  - name: Google News — prekės ženklas
+    url: https://news.google.com/rss/search?q=%22prek%C4%97s+%C5%BEenklas%22+when:7d&hl=lt&gl=LT&ceid=LT:lt

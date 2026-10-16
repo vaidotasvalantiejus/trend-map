@@ -1,0 +1,19 @@
+# Pagrindiniai nustatymai
+
+model: claude-sonnet-5-5        # Claude modelis analizei ir idėjoms
+
+window_days: 28                 # analizės langas (dienos)
+recent_days: 7                  # „dabar“ laikotarpis, lyginamas su likusiomis lango dienomis
+min_mentions: 3                 # mažiausiai paminėjimų, kad tema patektų į žemėlapį
+retention_days: 120             # kiek dienų laikyti surinktus įrašus
+
+instagram:
+  backend: auto                 # auto | apify | graph
+  posts_per_creator: 30
+  lookback_days: 35
+  apify_actor: apify~instagram-scraper
+  graph_api_version: v21.0
+
+ideas:
+  count: 8                      # kiek idėjų per savaitę
+  hooks_language: lt            # hook'ų kalba: lt arba en (pagal tai, kokia kalba kuri)
