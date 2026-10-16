@@ -10,7 +10,7 @@ from .common import (CONFIG, FEED_HEALTH, iso, load_yaml, log, merge_items, now,
 
 UA = ("Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 "
       "(KHTML, like Gecko) Chrome/126 Safari/537.36 TrendMap/1.0")
-BOT_UA = "Mozilla/5.0 (compatible; TrendMap/1.0; RSS reader)"
+BOT_UA = "Mozilla/5.0 (compatible; TrendMap/1.0; +https://github.com)"
 
 
 def _entry_date(e):

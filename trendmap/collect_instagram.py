@@ -146,7 +146,7 @@ def collect():
             backend = "graph"
         else:
             log("Instagram praleistas: nėra nei APIFY_TOKEN, nei IG_USER_ID + IG_ACCESS_TOKEN.")
-            return 0
+            return False
     log(f"Instagram ({backend}): {len(handles)} kūrėjų")
     items, meta = (fetch_apify if backend == "apify" else fetch_graph)(handles, cfg)
     old_meta = load_json(CREATORS_META, {})

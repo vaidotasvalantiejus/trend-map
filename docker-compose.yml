@@ -1,0 +1,38 @@
+# Trend Map serveris. Kodas atsisiunčiamas iš šios repozitorijos kiekvieno paleidimo metu,
+# visi duomenys, raktai ir nustatymai laikomi ./data aplanke.
+services:
+  trends:
+    image: python:3.12-slim
+    container_name: trends
+    restart: unless-stopped
+    ports:
+      - "8787:8787"
+    volumes:
+      - ./data:/data
+    environment:
+      TZ: Europe/Vilnius
+      TRENDMAP_HOME: /data
+      PORT: "8787"
+      REPO: vaidotasvalantiejus/trend-map
+      SETUP_CODE: "pakeisk-i-atsitiktini-koda"   # vienkartinis kodas pirmam prisijungimui
+      EVERY_PORTALS_H: "3"
+      EVERY_INSTAGRAM_H: "24"
+      EVERY_REPORT_H: "24"
+    command:
+      - python
+      - -c
+      - |
+        import io, os, subprocess, sys, tarfile, urllib.request
+        url = f"https://codeload.github.com/{os.environ['REPO']}/tar.gz/refs/heads/main"
+        data = urllib.request.urlopen(url, timeout=120).read()
+        with tarfile.open(fileobj=io.BytesIO(data)) as t:
+            root = t.getnames()[0].split("/")[0]
+            t.extractall("/tmp/src", filter="data")
+        os.system("rm -rf /app && mv /tmp/src/" + root + " /app")
+        subprocess.check_call([sys.executable, "-m", "pip", "install", "-q", "--no-cache-dir", "--root-user-action=ignore", "-r", "/app/requirements.txt"])
+        os.execv(sys.executable, [sys.executable, "-u", "/app/server.py"])
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request;urllib.request.urlopen('http://127.0.0.1:8787/healthz')"]
+      interval: 60s
+      timeout: 10s
+      start_period: 180s

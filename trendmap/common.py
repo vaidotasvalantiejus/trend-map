@@ -9,7 +9,7 @@ from pathlib import Path
 import yaml
 
 ROOT = Path(__file__).resolve().parent.parent
-CONFIG = ROOT / "config"
+CONFIG = Path(os.environ.get("TRENDMAP_CONFIG_DIR", ROOT / "config"))
 DATA = Path(os.environ.get("TRENDMAP_DATA_DIR", ROOT / "data"))
 DOCS = Path(os.environ.get("TRENDMAP_DOCS_DIR", ROOT / "docs"))
 REPORTS = Path(os.environ.get("TRENDMAP_REPORTS_DIR", ROOT / "reports"))
@@ -21,6 +21,7 @@ CREATORS_META = DATA / "creators_meta.json"
 FEED_HEALTH = DATA / "feed_health.json"
 IDEAS_HISTORY = DATA / "ideas_history.json"
 ANALYSIS = DATA / "analysis.json"
+IDEAS_CURRENT = DATA / "ideas_current.json"
 
 DEFAULT_SETTINGS = {
     "model": "claude-sonnet-5-5",

@@ -186,6 +186,7 @@ footer{padding:28px 0 60px;color:var(--muted);font-size:13px}
     <a href="#ideos">Idėjos</a><a href="#zemelapis">Žemėlapis</a><a href="#temos">Temos</a><a href="#kurejai">Kūrėjai</a><a href="#saltiniai">Šaltiniai</a><a href="#metodas">Kaip skaičiuojama</a>
   </div>
   <div class="right">
+    <a id="settings-link" href="/nustatymai" class="sel" style="text-decoration:none;display:none">Nustatymai</a>
     <select id="snap" class="sel" aria-label="Ataskaitos data"></select>
     <button id="theme" class="iconbtn" aria-label="Keisti temą" title="Šviesi / tamsi">◐</button>
   </div>
@@ -202,7 +203,7 @@ footer{padding:28px 0 60px;color:var(--muted);font-size:13px}
 <main>
 <section id="ideos"><div class="wrap">
   <div class="sec-head"><div><div class="eyebrow">01</div><h2>Savaitės idėjos</h2>
-  <p>Geriausios galimybės, atrinktos pagal momentum, neužimtumą, įsitraukimą ir tavo pozicionavimą.</p></div></div>
+  <p>Geriausios galimybės, atrinktos pagal momentum, neužimtumą, įsitraukimą ir tavo pozicionavimą.<span id="ideas-date" class="muted"></span></p></div></div>
   <div class="ideas" id="ideas"></div>
 </div></section>
 
@@ -302,6 +303,7 @@ function issueUrl(D, title, body){
 
 function render(D){
   window.__D = D;
+  if (D.server) $("#settings-link").style.display = "inline-block";
   const dt = new Date(D.generated);
   $("#h-date").textContent = "Ataskaita · " + dt.toLocaleDateString("lt-LT", {year:"numeric", month:"long", day:"numeric"});
   const s = D.stats;
@@ -320,6 +322,7 @@ function render(D){
 /* ---------- ideas ---------- */
 function renderIdeas(D){
   const el = $("#ideas");
+  $("#ideas-date").textContent = D.ideas_generated ? " Sugeneruota " + new Date(D.ideas_generated).toLocaleDateString("lt-LT", {month:"long", day:"numeric"}) + "." : "";
   if (!D.ideas || !D.ideas.length) { el.innerHTML = `<div class="empty">Šią savaitę idėjų nėra. Patikrink, ar surinkti duomenys ir ar nustatytas ANTHROPIC_API_KEY.</div>`; return; }
   el.innerHTML = D.ideas.map((x, i) => `
     <article class="idea">
@@ -523,7 +526,20 @@ function openTopic(id){
 }
 
 /* ---------- creators ---------- */
+const API_H = {"Content-Type": "application/json", "X-Requested-With": "trendmap"};
+async function api(url, body){
+  const r = await fetch(url, {method: "POST", headers: API_H, body: JSON.stringify(body)});
+  const j = await r.json().catch(() => ({}));
+  if (!r.ok) throw new Error(j.error || r.status);
+  return j;
+}
+function parseHandles(raw){
+  return [...new Set((raw.match(/(?:instagram\.com\/)?@?[A-Za-z0-9._]{2,30}/g) || [])
+    .map(s => s.replace(/^instagram\.com\//i, "").replace(/^@/, "").toLowerCase())
+    .filter(s => !/^(https?|www)$/.test(s) && !s.endsWith(".com")))];
+}
 function renderCreators(D){
+  if (D.server) return renderCreatorsServer(D);
   const r = repo(D);
   $("#add-hint").innerHTML = r
     ? `Atsidarys GitHub su paruoštu pranešimu — tereikia paspausti „Create“. Sąrašas atsinaujins per minutę, duomenys atsiras po kito savaitinio paleidimo.`
@@ -550,12 +566,50 @@ function renderCreators(D){
       <td class="hide-sm">${c.best ? `<a href="${esc(safeUrl(c.best.url))}" target="_blank" rel="noopener">${esc(c.best.title.slice(0, 60))}${c.best.title.length > 60 ? "…" : ""}</a> <span class="mono muted">${c.best.ratio}×</span>` : "<span class='muted'>–</span>"}</td>
       <td><button class="rm" data-h="${esc(c.handle)}" title="Pašalinti @${esc(c.handle)}" aria-label="Pašalinti @${esc(c.handle)}">×</button></td></tr>`;
   }).join("");
-  $("#ctable").innerHTML = `<thead><tr><th>Kūrėjas</th><th class="num hide-sm">Sekėjai</th><th class="num">Įrašai ${D.window_days} d.</th><th class="num hide-sm">Įsitraukimo mediana</th><th class="hide-sm">Pagrindinės temos</th><th class="hide-sm">Geriausias įrašas</th><th></th></tr></thead><tbody>${rows}</tbody>`;
+  fillCreatorTable(D, rows);
   $("#ctable").querySelectorAll(".rm").forEach(b => b.onclick = () => {
     const url = issueUrl(D, "[pašalinti] @" + b.dataset.h, "");
     if (!url) { toast("Pašalink faile config/creators.yml"); return; }
     if (confirm(`Pašalinti @${b.dataset.h} iš stebimų?`)) window.open(url, "_blank", "noopener");
   });
+}
+function fillCreatorTable(D, rows){
+  $("#ctable").innerHTML = `<thead><tr><th>Kūrėjas</th><th class="num hide-sm">Sekėjai</th><th class="num">Įrašai ${D.window_days} d.</th><th class="num hide-sm">Įsitraukimo mediana</th><th class="hide-sm">Pagrindinės temos</th><th class="hide-sm">Geriausias įrašas</th><th></th></tr></thead><tbody>${rows}</tbody>`;
+}
+function creatorRow(c){
+  const st = c.status === "ok" ? "var(--ok)" : c.status === "error" ? "var(--bad)" : "var(--gray)";
+  const stTitle = c.status === "error" ? esc(c.error || "klaida") : c.status === "ok" ? "Surinkta" : "Laukia pirmo surinkimo";
+  return `<tr>
+    <td><span class="dot" style="background:${st}" title="${stTitle}"></span><a href="https://www.instagram.com/${esc(c.handle)}/" target="_blank" rel="noopener">@${esc(c.handle)}</a>${c.name ? `<div class="muted" style="font-size:12px;margin-left:13px">${esc(c.name)}</div>` : ""}</td>
+    <td class="num hide-sm">${fmtN(c.followers)}</td>
+    <td class="num">${c.posts}</td>
+    <td class="num hide-sm">${fmtN(c.median_eng)}</td>
+    <td class="hide-sm">${c.topics.map(esc).join(", ") || "<span class='muted'>–</span>"}</td>
+    <td class="hide-sm">${c.best ? `<a href="${esc(safeUrl(c.best.url))}" target="_blank" rel="noopener">${esc(c.best.title.slice(0, 60))}${c.best.title.length > 60 ? "…" : ""}</a> <span class="mono muted">${c.best.ratio}×</span>` : "<span class='muted'>–</span>"}</td>
+    <td><button class="rm" data-h="${esc(c.handle)}" title="Pašalinti @${esc(c.handle)}" aria-label="Pašalinti @${esc(c.handle)}">×</button></td></tr>`;
+}
+function renderCreatorsServer(D){
+  $("#add-hint").textContent = "Naujų kūrėjų įrašai bus surinkti per kelias minutes, žemėlapis atsinaujins po analizės.";
+  const draw = () => {
+    fillCreatorTable(D, D.creators.map(creatorRow).join(""));
+    $("#ctable").querySelectorAll(".rm").forEach(b => b.onclick = async () => {
+      if (!confirm(`Pašalinti @${b.dataset.h} iš stebimų?`)) return;
+      try { await api("/api/creators", {remove: b.dataset.h}); D.creators = D.creators.filter(c => c.handle !== b.dataset.h); draw(); toast("Pašalinta"); }
+      catch(e) { toast("Klaida: " + e.message); }
+    });
+  };
+  $("#add-btn").onclick = async () => {
+    const handles = parseHandles($("#add-input").value.trim());
+    if (!handles.length) { toast("Įrašyk bent vieną paskyrą"); return; }
+    try {
+      const r = await api("/api/creators", {add: handles});
+      r.added.forEach(h => D.creators.unshift({handle: h, status: "laukia", posts: 0, topics: [], best: null}));
+      $("#add-input").value = ""; draw();
+      toast(r.added.length ? "Pridėta: " + r.added.map(h => "@" + h).join(", ") : "Jau buvo sąraše");
+    } catch(e) { toast("Klaida: " + e.message); }
+  };
+  $("#add-input").onkeydown = e => { if (e.key === "Enter") $("#add-btn").click(); };
+  draw();
 }
 
 /* ---------- feeds ---------- */

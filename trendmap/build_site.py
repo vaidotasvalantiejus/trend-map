@@ -2,7 +2,7 @@
 import json
 import os
 
-from .common import ANALYSIS, DOCS, REPORTS, ROOT, load_json, log, save_json
+from .common import ANALYSIS, DOCS, IDEAS_CURRENT, REPORTS, ROOT, load_json, log, save_json
 
 FORMAT_LT = {"reel": "Reel", "carousel": "Carousel", "image": "Vienas vaizdas"}
 
@@ -36,6 +36,11 @@ def build(demo=False):
         raise SystemExit("Nėra analizės. Pirma paleisk: python run.py report")
     a["demo"] = demo
     a["repo"] = os.environ.get("GITHUB_REPOSITORY", "")
+    a["server"] = os.environ.get("TRENDMAP_SERVER") == "1"
+    if "ideas" not in a:
+        cur = load_json(IDEAS_CURRENT, {})
+        a["ideas"] = cur.get("ideas", [])
+        a["ideas_generated"] = cur.get("generated")
     date = a["generated"][:10]
 
     snap_dir = DOCS / "snapshots"

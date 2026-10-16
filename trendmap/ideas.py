@@ -1,7 +1,7 @@
 """Savaitės turinio idėjos pagal geriausias galimybes ir tavo pozicionavimą."""
 import json
 
-from .common import ANALYSIS, IDEAS_HISTORY, iso, load_json, log, now, profile_text, save_json, settings
+from .common import ANALYSIS, IDEAS_CURRENT, IDEAS_HISTORY, iso, load_json, log, now, profile_text, save_json, settings
 from .llm import LLM
 
 SYSTEM = """Tu esi turinio strategas, kuris padeda marketingo turinio kūrėjui nuspręsti, apie ką kalbėti šią savaitę.
@@ -105,9 +105,11 @@ JSON: {{"ideas": [{{"topic_id": "t001", "title": "...", "angle": "...", "why_now
         idea["sources"] = [u for u in idea.get("sources", []) if u in valid_urls][:3]
         idea["hooks"] = [h for h in idea.get("hooks", []) if isinstance(h, str)][:3]
         ideas.append(idea)
-    analysis["ideas"] = ideas
-    save_json(ANALYSIS, analysis)
     stamp = iso(now())
+    analysis["ideas"] = ideas
+    analysis["ideas_generated"] = stamp
+    save_json(ANALYSIS, analysis)
+    save_json(IDEAS_CURRENT, {"generated": stamp, "ideas": ideas})
     history += [{"date": stamp, "title": i["title"], "topic": i["topic_name"]} for i in ideas]
     save_json(IDEAS_HISTORY, history[-300:])
     log(f"Idėjos: {len(ideas)}")
