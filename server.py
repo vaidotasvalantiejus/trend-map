@@ -678,6 +678,14 @@ class Handler(BaseHTTPRequestHandler):
 def main():
     load_secrets_into_env()
     log(f"Trend Map serveris paleistas, prievadas {PORT}")
+    if (HOME / "data" / "analysis.json").exists():
+        try:  # perpiešti svetainę su naujausiu šablonu
+            old_out, sys.stdout = sys.stdout, _Tee()
+            build_site.build()
+        except Exception as e:  # noqa: BLE001
+            log(f"Svetainės perpiešimas nepavyko: {e}")
+        finally:
+            sys.stdout = old_out
     threading.Thread(target=scheduler, daemon=True).start()
     ThreadingHTTPServer(("0.0.0.0", PORT), Handler).serve_forever()
 

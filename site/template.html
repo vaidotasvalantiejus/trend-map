@@ -25,7 +25,7 @@
   --ok:#5bbf6e; --bad:#ec6a58; color-scheme:dark;}
 *{box-sizing:border-box}
 html{scroll-behavior:smooth;scroll-padding-top:64px}
-body{margin:0;background:var(--paper);color:var(--ink);font:15px/1.5 var(--sans);-webkit-font-smoothing:antialiased}
+body{margin:0;overflow-x:clip;background:var(--paper);color:var(--ink);font:15px/1.5 var(--sans);-webkit-font-smoothing:antialiased}
 a{color:inherit}
 .wrap{max-width:1180px;margin:0 auto;padding:0 24px}
 @media(max-width:640px){.wrap{padding:0 16px}}
@@ -45,6 +45,20 @@ select,button,input,textarea{font:inherit;color:inherit}
 .sel{background:var(--card);border:1px solid var(--line);border-radius:6px;padding:4px 8px;font-size:13px}
 .iconbtn{background:none;border:1px solid var(--line);border-radius:6px;width:30px;height:30px;cursor:pointer;display:grid;place-items:center}
 @media(max-width:760px){nav.top .links{display:none}}
+@media(max-width:520px){
+  nav.top .wrap{gap:10px}
+  .logo{font-size:12px;letter-spacing:.1em}
+  nav.top .right{gap:6px}
+  .sel{padding:4px 6px;font-size:12px}
+  h1{font-size:44px}
+  h2{font-size:34px}
+  section{padding:40px 0}
+  .idea{padding:18px 16px 16px}
+  .idea h3{font-size:24px}
+  .hooks li{flex-direction:column;gap:4px}
+  .hooks li .copy{align-self:flex-start;padding:2px 0}
+  .stat b{font-size:32px}
+}
 
 /* hero */
 header.hero{padding:56px 0 28px;border-bottom:1px solid var(--line)}
@@ -69,7 +83,8 @@ h2{font:400 44px/1 var(--serif);margin:6px 0 0}
 /* ideas */
 .ideas{display:grid;grid-template-columns:repeat(2,1fr);gap:16px}
 @media(max-width:820px){.ideas{grid-template-columns:1fr}}
-.idea{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:22px 22px 18px;display:flex;flex-direction:column;gap:12px}
+.ideas>*,.movers>*,.detail>*{min-width:0}
+.idea{min-width:0;overflow-wrap:anywhere;background:var(--card);border:1px solid var(--line);border-radius:12px;padding:22px 22px 18px;display:flex;flex-direction:column;gap:12px}
 .idea .num{font:400 15px/1 var(--mono);color:var(--muted)}
 .idea h3{font:400 28px/1.1 var(--serif);margin:0}
 .chips{display:flex;flex-wrap:wrap;gap:6px}
@@ -84,7 +99,7 @@ h2{font:400 44px/1 var(--serif);margin:6px 0 0}
 .copy:hover{color:var(--ink);background:var(--line-2)}
 .contra{border-left:2px solid var(--accent);padding-left:10px;font-style:italic}
 .srcs{display:flex;flex-direction:column;gap:3px;font-size:13px}
-.srcs a{color:var(--muted);text-decoration:none;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.srcs a{color:var(--muted);text-decoration:none;display:block;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:100%}
 .srcs a:hover{color:var(--ink);text-decoration:underline}
 .empty{padding:28px;border:1px dashed var(--line);border-radius:12px;color:var(--muted);text-align:center}
 
@@ -121,6 +136,7 @@ h2{font:400 44px/1 var(--serif);margin:6px 0 0}
 .trow.head{cursor:default;border-top:0;font:500 11px/1.2 var(--mono);letter-spacing:.06em;text-transform:uppercase;color:var(--muted);background:var(--paper)}
 .trow:not(.head):hover{background:color-mix(in srgb,var(--paper) 60%,var(--card))}
 .trow .rank{font-family:var(--mono);color:var(--muted);font-size:13px}
+.trow .name{min-width:0;overflow-wrap:anywhere}
 .trow .name b{font-weight:600;display:block}
 .trow .name small{color:var(--muted);font-size:12px}
 .bar{height:6px;border-radius:3px;background:var(--line-2);position:relative;overflow:hidden;margin-top:5px}
@@ -211,7 +227,7 @@ footer{padding:28px 0 60px;color:var(--muted);font-size:13px}
   <div class="sec-head"><div><div class="eyebrow">02</div><h2>Trendų žemėlapis</h2>
   <p>Aukštyn — tema kyla. Kairėn — mažiau stebimų kūrėjų apie ją kalba. Viršutinis kairys kampas yra tavo langas.</p></div></div>
   <div class="mapbox">
-    <svg id="map" viewBox="0 0 1000 600" role="img" aria-label="Temų žemėlapis: momentum ir prisotinimas"></svg>
+    <svg id="map" viewBox="0 0 1000 600" preserveAspectRatio="xMidYMid meet" role="img" aria-label="Temų žemėlapis: momentum ir prisotinimas"></svg>
     <div class="legend" id="map-legend"></div>
     <div class="tip" id="tip"></div>
   </div>
@@ -320,9 +336,12 @@ function render(D){
 }
 
 /* ---------- ideas ---------- */
+let ARTICLES = {};
 function renderIdeas(D){
+  ARTICLES = {};
+  D.topics.forEach(t => [...t.top_articles, ...t.top_posts].forEach(a => { if (a.url) ARTICLES[a.url] = {title: a.title, source: a.type === "instagram" ? "@" + a.source : a.source}; }));
   const el = $("#ideas");
-  $("#ideas-date").textContent = D.ideas_generated ? " Sugeneruota " + new Date(D.ideas_generated).toLocaleDateString("lt-LT", {month:"long", day:"numeric"}) + "." : "";
+  $("#ideas-date").textContent = D.ideas_generated ? " Sugeneruota " + new Date(D.ideas_generated).toLocaleDateString("lt-LT", {month:"long", day:"numeric"}).replace(/\.$/, "") + "." : "";
   if (!D.ideas || !D.ideas.length) { el.innerHTML = `<div class="empty">Šią savaitę idėjų nėra. Patikrink, ar surinkti duomenys ir ar nustatytas ANTHROPIC_API_KEY.</div>`; return; }
   el.innerHTML = D.ideas.map((x, i) => `
     <article class="idea">
@@ -338,7 +357,9 @@ function renderIdeas(D){
         `<li><span>${esc(h)}</span><button class="copy" data-copy="${esc(h)}">kopijuoti</button></li>`).join("")}</ul></div>
       ${x.format_why ? `<div><div class="lbl">Formatas</div><p>${esc(x.format_why)}</p></div>` : ""}
       ${x.contrarian ? `<div><div class="lbl">Priešingas kampas</div><p class="contra">${esc(x.contrarian)}</p></div>` : ""}
-      ${(x.sources || []).length ? `<div class="srcs">${x.sources.map(u => `<a href="${esc(safeUrl(u))}" target="_blank" rel="noopener">↗ ${esc(domain(u) + new URL(u).pathname.slice(0, 50))}</a>`).join("")}</div>` : ""}
+      ${(x.sources || []).length ? `<div class="srcs">${x.sources.map(u => { const a = ARTICLES[u];
+        const label = a ? `${a.title} · ${a.source.replace("Google News — ", "").replace(" (per Google News)", "")}` : domain(u);
+        return `<a href="${esc(safeUrl(u))}" target="_blank" rel="noopener">↗ ${esc(label)}</a>`; }).join("")}</div>` : ""}
     </article>`).join("");
   el.querySelectorAll(".copy").forEach(b => b.onclick = () => {
     navigator.clipboard?.writeText(b.dataset.copy).then(() => toast("Nukopijuota"), () => toast("Nepavyko nukopijuoti"));
@@ -354,7 +375,11 @@ function dotStyle(t){
   return {fill: css("--gray"), stroke: "none"};
 }
 function drawMap(D){
-  const svg = $("#map"), W = 1000, H = 600, P = {l: 64, r: 28, t: 28, b: 52};
+  const svg = $("#map");
+  const cw = Math.round(svg.parentElement.clientWidth - 24) || 1000;
+  const W = Math.min(1000, Math.max(300, cw)), small = W < 640;
+  const H = small ? Math.round(W * 1.25) : 600, P = {l: small ? 44 : 64, r: small ? 12 : 28, t: 28, b: 52};
+  svg.setAttribute("viewBox", `0 0 ${W} ${H}`);
   const T = D.topics;
   if (!T.length) { svg.innerHTML = `<text x="500" y="300" text-anchor="middle" fill="${css("--muted")}">Kol kas nėra temų</text>`; return; }
   const xmax = Math.min(1, Math.max(0.6, ...T.map(t => t.saturation)) + 0.05);
@@ -362,7 +387,7 @@ function drawMap(D){
   const ymin = Math.min(-1, Math.min(...ms) - 0.2), ymax = Math.max(1.5, Math.max(...ms) + 0.45);
   const X = v => P.l + (v / xmax) * (W - P.l - P.r);
   const Y = v => P.t + (1 - (v - ymin) / (ymax - ymin)) * (H - P.t - P.b);
-  const R = t => Math.min(26, 5 + Math.sqrt(t.volume) * 1.6);
+  const R = t => Math.min(small ? 16 : 26, (small ? 4 : 5) + Math.sqrt(t.volume) * (small ? 1 : 1.6));
   const line = css("--line"), muted = css("--muted"), ink = css("--ink"), soft = css("--accent-soft");
   let g = "";
   // zone: neužimta erdvė
@@ -372,16 +397,16 @@ function drawMap(D){
     g += `<line x1="${P.l}" x2="${W - P.r}" y1="${Y(v)}" y2="${Y(v)}" stroke="${line}" stroke-width="1" ${v === 0 ? "" : 'stroke-dasharray="2 4"'}/>`;
     g += `<text x="${P.l - 10}" y="${Y(v) + 4}" text-anchor="end" font-size="12" fill="${muted}" font-family="JetBrains Mono, monospace">${v > 0 ? "+" + v : v}</text>`;
   }
-  for (let v = 0; v <= xmax + 1e-9; v += 0.2) {
+  for (let v = 0; v <= xmax + 1e-9; v += small ? 0.3 : 0.2) {
     g += `<text x="${X(v)}" y="${H - P.b + 20}" text-anchor="middle" font-size="12" fill="${muted}" font-family="JetBrains Mono, monospace">${Math.round(v * 100)}%</text>`;
   }
   g += `<line x1="${X(0.3)}" x2="${X(0.3)}" y1="${P.t}" y2="${H - P.b}" stroke="${line}" stroke-dasharray="4 4"/>`;
-  g += `<text x="${(P.l + W - P.r) / 2}" y="${H - 10}" text-anchor="middle" font-size="12" fill="${muted}">Prisotinimas — dalis stebimų kūrėjų, kalbėjusių apie temą →</text>`;
+  g += `<text x="${(P.l + W - P.r) / 2}" y="${H - 10}" text-anchor="middle" font-size="12" fill="${muted}">${small ? "Prisotinimas: kiek kūrėjų kalba →" : "Prisotinimas — dalis stebimų kūrėjų, kalbėjusių apie temą →"}</text>`;
   g += `<text transform="translate(16 ${(P.t + H - P.b) / 2}) rotate(-90)" text-anchor="middle" font-size="12" fill="${muted}">Momentum (log₂) →</text>`;
   const ql = (x, y, txt, anchor) => `<text x="${x}" y="${y}" text-anchor="${anchor}" font-size="11" letter-spacing="1.2" fill="${muted}" font-family="JetBrains Mono, monospace">${txt}</text>`;
   g += ql(X(0) + 10, Y(ymax) + 18, "NEUŽIMTA ERDVĖ", "start");
   g += ql(W - P.r - 10, Y(ymax) + 18, "KARŠTA", "end");
-  g += ql(W - P.r - 10, Y(ymin) - 10, "PERPILDYTA / GĘSTANTI", "end");
+  g += ql(W - P.r - 10, Y(ymin) - 10, small ? "PERPILDYTA" : "PERPILDYTA / GĘSTANTI", "end");
   g += ql(X(0) + 10, Y(ymin) - 10, "TYLU", "start");
 
   // dots — bigger first so small ones stay on top
@@ -395,17 +420,19 @@ function drawMap(D){
   const boxes = [
     [X(0) + 6, Y(ymax) + 6, 120, 16], [W - P.r - 70, Y(ymax) + 6, 66, 16],
     [W - P.r - 190, Y(ymin) - 24, 186, 16], [X(0) + 6, Y(ymin) - 24, 50, 16]];
+  if (small) boxes[2] = [W - P.r - 110, Y(ymin) - 24, 106, 16];
   const circ = T.map(t => { const cx = X(t.saturation), cy = Y(Math.max(-3, Math.min(3, t.momentum))), r = R(t); return [cx - r, cy - r, 2 * r, 2 * r]; });
   const byOpp = T.map((t, i) => i).sort((a, b) => T[b].opportunity - T[a].opportunity);
-  const maxLabels = T.length <= 22 ? T.length : 16;
+  const maxLabels = small ? Math.min(T.length, 10) : (T.length <= 22 ? T.length : 16);
   for (const i of byOpp.slice(0, maxLabels)) {
     const t = T[i], cx = X(t.saturation), cy = Y(Math.max(-3, Math.min(3, t.momentum))), r = R(t);
-    const label = t.name.length > 34 ? t.name.slice(0, 33) + "…" : t.name;
+    const maxCh = small ? 22 : 34;
+    const label = t.name.length > maxCh ? t.name.slice(0, maxCh - 1) + "…" : t.name;
     const w = label.length * 7.1, h = 14, d = r * 0.7;
     const cands = [[cx + r + 6, cy + 4, "start"], [cx - r - 6, cy + 4, "end"], [cx, cy - r - 7, "middle"], [cx, cy + r + 15, "middle"],
       [cx + d + 4, cy - d - 4, "start"], [cx + d + 4, cy + d + 12, "start"], [cx - d - 4, cy - d - 4, "end"], [cx - d - 4, cy + d + 12, "end"]];
     const hit = (x0, y0, b) => x0 < b[0] + b[2] && x0 + w > b[0] && y0 < b[1] + b[3] && y0 + h > b[1];
-    for (const [lx, ly, a, loose] of [...cands, ...cands.map(c => [...c, 1])]) {
+    for (const [lx, ly, a, loose] of (small ? cands : [...cands, ...cands.map(c => [...c, 1])])) {
       const x0 = a === "start" ? lx : a === "end" ? lx - w : lx - w / 2, y0 = ly - 11;
       if (x0 < P.l || x0 + w > W - 4 || y0 < 2 || y0 + h > H - P.b) continue;
       if (boxes.some(b => hit(x0, y0, b)) || (!loose && circ.some((b, j) => j !== i && hit(x0, y0, b)))) continue;
@@ -632,6 +659,7 @@ function initSnaps(D){
   };
 }
 
+let _rz; addEventListener("resize", () => { clearTimeout(_rz); _rz = setTimeout(() => window.__D && drawMap(window.__D), 150); });
 if (window.DATA) { render(window.DATA); initSnaps(window.DATA); }
 else document.querySelector("main").innerHTML = `<div class="wrap"><div class="empty" style="margin:60px 0">Duomenų dar nėra.</div></div>`;
 })();
